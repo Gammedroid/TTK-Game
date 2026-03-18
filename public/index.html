@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="./css/style.css">
+
+</head>
+
+<body>
+
+<div id="game">
+
+<div id="vignette"></div>
+
+<div id="timer"></div>
+
+<div id="topWinners">
+<h2>🏆 TOP WINNERS</h2>
+<div id="winnerList"></div>
+</div>
+
+<div id="podium">
+<h1>🏆 WINNERS</h1>
+<div class="podiumRow" id="podiumRow"></div>
+</div>
+
+</div>
+
+<audio id="music" preload="auto" loop>
+<source src="./assets/audio/music.mp3" type="audio/mpeg">
+</audio>
+
+<script src="./js/game.js"></script>   <!-- lógica geral -->
+
+<script src="./js/gameSystems.js"></script>
+<script src="./js/gameUI.js"></script>
+
+<script src="./js/socket.js"></script> <!-- comunicação primeiro -->
+
+<script src="./js/match.js"></script>  <!-- timer / lógica de partida -->
+
+
+</body>
+</html>
