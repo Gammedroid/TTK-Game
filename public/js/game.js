@@ -1,4 +1,9 @@
 let players = {};
+let projectiles = [];
+let lifeStealQueue = [];
+let activeLifeStealStacks = [];
+let lifeStealEffects = [];
+const MAX_ACTIVE_LIFE_STEAL_STACKS = 2;
 
 /* SPAWN */
 
@@ -48,9 +53,147 @@ function spawn(user, photo) {
     vx: (Math.random() - 0.5) * 12,
     vy: (Math.random() - 0.5) * 12,
 
+    heartShots: 0,
+    heartShotInterval: 300,
+    nextHeartShotAt: 0,
+    heartNoTargetBurstDone: false,
+
     el: div,
     hpDiv: hp,
   };
+}
+
+function getRandomTarget(shooter) {
+  let targets = Object.values(players).filter(
+    (p) => p.user !== shooter.user && p.hp > 0,
+  );
+
+  if (targets.length === 0) return null;
+
+  return targets[Math.floor(Math.random() * targets.length)];
+}
+
+function shootProjectile(shooter) {
+  const target = getRandomTarget(shooter);
+
+  if (!target) return false;
+
+  projectiles.push({
+    shooterUser: shooter.user,
+    targetUser: target.user,
+    x: shooter.x + 50,
+    y: shooter.y + 50,
+    vx: 0,
+    vy: 0,
+    speed: 26,
+    damage: 1,
+    homing: true,
+  });
+
+  return true;
+}
+
+function shootNoTargetBurst(shooter) {
+  const total = 12; // quantidade de projéteis na onda
+
+  for (let i = 0; i < total; i++) {
+    const angle = (Math.PI * 2 * i) / total;
+
+    projectiles.push({
+      shooterUser: shooter.user,
+      targetUser: null,
+      x: shooter.x + 50,
+      y: shooter.y + 50,
+      vx: Math.cos(angle) * 18,
+      vy: Math.sin(angle) * 18,
+      speed: 18,
+      damage: 0,
+      homing: false,
+      life: 30,
+    });
+  }
+}
+
+function updateProjectiles() {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const proj = projectiles[i];
+
+    // PROJÉTIL SEM ALVO (visual aleatório)
+    if (!proj.homing) {
+      proj.x += proj.vx;
+      proj.y += proj.vy;
+
+      proj.life -= 1;
+
+      if (
+        proj.life <= 0 ||
+        proj.x < -50 ||
+        proj.x > 1100 ||
+        proj.y < -50 ||
+        proj.y > 1950
+      ) {
+        projectiles.splice(i, 1);
+      }
+
+      continue;
+    }
+
+    // PROJÉTIL COM ALVO
+    const target = players[proj.targetUser];
+
+    // Se o alvo sumiu ou morreu, o projétil vira aleatório e continua visualmente
+    if (!target || target.hp <= 0) {
+      const angle = Math.random() * Math.PI * 2;
+
+      proj.homing = false;
+      proj.targetUser = null;
+      proj.vx = Math.cos(angle) * 18;
+      proj.vy = Math.sin(angle) * 18;
+      proj.life = 25;
+
+      continue;
+    }
+
+    const targetX = target.x + 50;
+    const targetY = target.y + 50;
+
+    const dx = targetX - proj.x;
+    const dy = targetY - proj.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist <= proj.speed) {
+      if (target.shield > 0) {
+        floating(target, "BLOCK", "blue");
+      } else {
+        target.hp -= proj.damage;
+        target.hpDiv.innerText = "❤️ " + target.hp;
+        floating(target, "-1", "red");
+
+        const shooter = players[proj.shooterUser];
+
+        if (target.hp <= 0) {
+          kill(target, shooter || null);
+        }
+      }
+
+      projectiles.splice(i, 1);
+      continue;
+    }
+
+    proj.x += (dx / dist) * proj.speed;
+    proj.y += (dy / dist) * proj.speed;
+  }
+}
+function renderProjectiles() {
+  document.querySelectorAll(".projectile").forEach((el) => el.remove());
+
+  for (const proj of projectiles) {
+    const el = document.createElement("div");
+    el.className = "projectile";
+    el.style.left = proj.x + "px";
+    el.style.top = proj.y + "px";
+    game.appendChild(el);
+  }
 }
 
 /* COLISOES */
@@ -107,6 +250,30 @@ function update() {
   for (let id in players) {
     let p = players[id];
 
+    const now = Date.now();
+
+    if (p.heartShots > 0 && now >= p.nextHeartShotAt) {
+      const hasTarget = getRandomTarget(p);
+
+      if (hasTarget) {
+        const fired = shootProjectile(p);
+
+        if (fired) {
+          p.heartShots -= 1;
+          p.heartNoTargetBurstDone = false;
+        }
+
+        p.nextHeartShotAt = now + p.heartShotInterval;
+      } else {
+        if (!p.heartNoTargetBurstDone) {
+          shootNoTargetBurst(p);
+          p.heartNoTargetBurstDone = true;
+        }
+
+        p.nextHeartShotAt = now + p.heartShotInterval;
+      }
+    }
+
     p.x += p.vx;
     p.y += p.vy;
 
@@ -139,13 +306,24 @@ function update() {
     }
   }
 
+  if (typeof updateHandHeartSystem === "function") {
+    updateHandHeartSystem();
+  }
+
   collision();
+  updateProjectiles();
+  renderProjectiles();
+
+  if (typeof renderLifeStealEffects === "function") {
+    renderLifeStealEffects();
+  }
 
   requestAnimationFrame(update);
 }
 
 window.players = players;
+window.projectiles = projectiles;
 window.spawn = spawn;
 window.update = update;
 
-update()
+requestAnimationFrame(update);

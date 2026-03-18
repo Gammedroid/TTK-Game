@@ -13,6 +13,9 @@ const TIKTOK_USERNAME = "tikgames";
 const DEV_MODE = false;
 const CHAMPIONS_FILE = path.join(__dirname, "..", "data", "champions.json");
 
+const HEART_GIFT_ID = 5327;
+const HAND_HEART_GIFT_ID = 5660;
+
 /* ========================= */
 /* RANKING GLOBAL */
 /* ========================= */
@@ -146,8 +149,44 @@ if (!DEV_MODE) {
       });
     }
 
-    let coins = data.diamondCount * data.repeatCount;
-    console.log("🎁 GIFT:", data.uniqueId, coins);
+    const giftId = Number(data.giftId || 0);
+    const coins =
+      Number(data.diamondCount || 0) * Number(data.repeatCount || 1);
+
+    console.log("🎁 GIFT:", data.uniqueId, "giftId:", giftId, "coins:", coins);
+
+    if (giftId === HEART_GIFT_ID) {
+      const repeatCount = Number(data.repeatCount || 1);
+      const shots = repeatCount * 5;
+
+      console.log("❤️ HEART POWER-UP:", data.uniqueId, "| tiros:", shots);
+
+      broadcast({
+        type: "heartPower",
+        user: data.uniqueId,
+        shots: shots,
+        interval: 300, // 1 tiro a cada 300ms
+      });
+
+      return;
+    }
+
+    if (giftId === HAND_HEART_GIFT_ID) {
+      const repeatCount = Number(data.repeatCount || 1);
+
+      console.log("⚡ HAND HEART:", data.uniqueId, "| stacks:", repeatCount);
+
+      broadcast({
+        type: "handHeart",
+        user: data.uniqueId,
+        stacks: repeatCount,
+        beams: 3,
+        hitsPerBeam: 5,
+        interval: 500,
+      });
+
+      return;
+    }
 
     broadcast({
       type: "shield",
@@ -251,6 +290,7 @@ console.log("");
 console.log("🧪 COMANDOS DE TESTE");
 console.log("enter nome");
 console.log("gift nome moedas");
+console.log("heart nome");
 console.log("like nome quantidade");
 console.log("champ nome");
 console.log("");
@@ -279,6 +319,27 @@ rl.on("line", (input) => {
     });
 
     console.log("🛡 ESCUDO:", args[1], args[2]);
+  }
+
+  if (args[0] === "heart") {
+    const amount = parseInt(args[2] || "1", 10);
+    const shots = amount * 5;
+
+    broadcast({
+      type: "heartPower",
+      user: args[1],
+      shots: shots,
+      interval: 300,
+    });
+
+    console.log(
+      "❤️ HEART POWER:",
+      args[1],
+      "| hearts:",
+      amount,
+      "| tiros:",
+      shots,
+    );
   }
 
   if (args[0] === "like") {
@@ -313,5 +374,23 @@ rl.on("line", (input) => {
     });
 
     console.log("🏆 vitória adicionada:", user);
+  }
+
+  if (args[0] === "handheart") {
+    const user = args[1];
+    const stacks = Number(args[2] || 1);
+
+    console.log(`⚡ TESTE HAND HEART -> ${user} | stacks: ${stacks}`);
+
+    broadcast({
+      type: "handHeart",
+      user: user,
+      stacks: stacks,
+      beams: 3,
+      hitsPerBeam: 5,
+      interval: 500,
+    });
+
+    return;
   }
 });

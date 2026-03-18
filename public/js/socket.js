@@ -27,6 +27,20 @@ socket.onmessage = (e) => {
     addHP(data.user, data.hp);
   }
 
+  if (data.type === "heartPower") {
+    activateHeartPower(data.user, data.shots, data.interval);
+  }
+
+  if (data.type === "handHeart") {
+    queueHandHeartPower(
+      data.user,
+      data.stacks,
+      data.beams,
+      data.hitsPerBeam,
+      data.interval,
+    );
+  }
+
   if (data.type === "topWinners") {
     updateTop(data.data);
   }

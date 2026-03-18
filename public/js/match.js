@@ -71,7 +71,9 @@ function resetGame() {
     players[id].el.remove();
   }
 
+  clearHandHeartSystem();
   players = {};
+  projectiles = [];
   floatingStack = {};
   joinAttempts = {};
 
